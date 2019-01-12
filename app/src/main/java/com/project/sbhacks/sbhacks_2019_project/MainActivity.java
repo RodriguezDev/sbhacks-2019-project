@@ -3,6 +3,7 @@ package com.project.sbhacks.sbhacks_2019_project;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
@@ -45,6 +46,13 @@ public class MainActivity extends AppCompatActivity {
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+
+        Intent intent = new Intent(this, LocationActivity.class);
+        startActivity(intent);
+
+
 
         if (!checkIsSupportedDeviceOrFinish(this)) {
             return;
