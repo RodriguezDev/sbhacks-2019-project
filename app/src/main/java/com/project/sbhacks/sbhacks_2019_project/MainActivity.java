@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -61,6 +62,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     private Location location1;
     private Location location2;
 
+    private static SensorManager sensorManager;
+    private Sensor sensor;
+
     private float orientation;
 
     private RequestQueue queue;
@@ -92,7 +96,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         postLocationRequest(username);
 
         // This method is used to get the cccc's location
-        getLocationRequest();
+        //getLocationRequest();
+        location2.setLatitude(34.412592303947);
+        location2.setLongitude(-119.84716129285518);
 
 
         setContentView(R.layout.activity_main);
@@ -125,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 }
 
                 if (node == null) {
+                    getDeviceAngle();
                     node = createPin();
                 } else if (isNodeClose(node, 0.75f)) {
                     arFragment.getArSceneView().getScene().removeChild(node);
@@ -183,20 +190,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         Node node;
         Session session = arFragment.getArSceneView().getSession();
 
-        float x = (float) (location2.getLongitude() - location1.getLongitude());
-        float y = (float) (location2.getLatitude() - location1.getLatitude());
-        Vector3 position = new Vector3(x, 0, y);
+        //float x = (float) (location2.getLongitude() - location1.getLongitude());
+        //float y = (float) (location2.getLatitude() - location1.getLatitude());
+        //Vector3 position = new Vector3(x, 0, y);
+        //position = Vector3.cross(position, Vector3.up()).scaled(1000);
         //position = position.normalized().scaled(4);
 
-        //Vector3 position = new Vector3(0, 0, -4);
-        position = new Vector3((float) (Math.random() * 4), 0, (float) (Math.random() * 4));
+        float angle = Device.getAngle(location1, location2, orientation);
+
+        Vector3 position = new Vector3((float) Math.sin(Math.toRadians((double) angle)), 0, -4 * (float) Math.cos(Math.toRadians((double) angle)));
+        position = Vector3.cross(position, Vector3.up()).scaled(-1);
+        //position = new Vector3((float) (Math.random() * 4), 0, (float) (Math.random() * 4));
 
         node = new Node();
         float scale = (float) 0.25;
         node.setLocalScale(new Vector3(scale, scale, scale));
         node.setRenderable(pinRenderable);
         node.setParent(arFragment.getArSceneView().getScene());
-        node.setLocalPosition(position);
+        node.setLocalPosition(Vector3.add(position, arFragment.getArSceneView().getScene().getCamera().getLocalPosition()));
         return node;
     }
 
@@ -205,6 +216,26 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         Vector3 pos2 = node.getWorldPosition();
         double diff = Math.pow(pos2.x - pos1.x, 2) + Math.pow(pos2.y - pos1.y, 2) + Math.pow(pos2.z - pos1.z, 2);
         return Math.pow(dist, 2) > diff;
+    }
+
+    private void getDeviceAngle() {
+        SensorEventListener sensorEventListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                orientation = event.values[0];
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+            }
+        };
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+        if (sensor != null) {
+            sensorManager.registerListener(sensorEventListener, sensor, SensorManager.SENSOR_DELAY_UI);
+        }
     }
 
     public static boolean checkIsSupportedDeviceOrFinish(final Activity activity) {
