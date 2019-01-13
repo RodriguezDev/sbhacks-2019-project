@@ -11,7 +11,8 @@ import android.support.v4.app.ActivityCompat;
 public class Device {
     static final int REQUEST_LOCATION = 1;
 
-    public static void getLocation(Context context, Activity activity, Location location, LocationManager locationManager) {
+    public static Location getLocation(Context context, Activity activity, LocationManager locationManager) {
+        Location location = new Location("");
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -19,6 +20,7 @@ public class Device {
         } else {
             location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
         }
+        return location;
     }
 
     public static float getAngle(Location location1, Location location2, float orientation) {

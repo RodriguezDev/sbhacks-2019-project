@@ -5,6 +5,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
@@ -44,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
     private  AnchorNode anchorNode;
 
+    private LocationManager locationManager;
     private Location location1;
     private Location location2;
 
@@ -62,7 +64,13 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        location1 = new Location("");
+        location2 = new Location("");
+
         queue = Volley.newRequestQueue(this);
+
+        location1 = Device.getLocation(this, this, locationManager);
 
         getLocationRequest();
 
@@ -106,13 +114,13 @@ public class MainActivity extends AppCompatActivity {
                     //Find its unit vector
                     //Multiply by distance value
                     //Orient to AR space
-                    //float x = (float) (location2.getLongitude() - location1.getLongitude());
-                    //float y = (float) (location2.getLatitude() - location1.getLatitude());
-                    //Vector3 position = new Vector3(x, y, 0);
-                    //position = position.normalized().scaled(3);
+                    float x = (float) (location2.getLongitude() - location1.getLongitude());
+                    float y = (float) (location2.getLatitude() - location1.getLatitude());
+                    Vector3 position = new Vector3(x, y, 0);
+                    position = position.normalized().scaled(3);
 
-                    float[] pos = {0, 0, -1};
-                    //float[] pos = {position.x, position.y, position.z};
+                    //float[] pos = {0, 0, -1};
+                    float[] pos = {position.x, position.y, position.z};
                     float[] rot = {0, 0, 0, 1};
                     Anchor anchor = session.createAnchor(new Pose(pos, rot));
                     anchorNode = new AnchorNode(anchor);
@@ -174,8 +182,8 @@ public class MainActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
                         Log.d("Response", response.toString());
                         try {
-                            double longitude = Double.parseDouble((String) response.get("long"));
-                            double latitude = Double.parseDouble((String) response.get("lat"));
+                            double longitude = Double.parseDouble(response.get("long").toString());
+                            double latitude = Double.parseDouble(response.get("lat").toString());
                             location2.setLongitude(longitude);
                             location2.setLatitude(latitude);
                         } catch (JSONException e) {
@@ -187,9 +195,12 @@ public class MainActivity extends AppCompatActivity {
             public void onErrorResponse(VolleyError e) {
                 Log.d("Error Response", e.getMessage());
             }
-        }
-        );
 
+        });
         queue.add(getRequest);
+    }
+
+    private void postLocationRequest() {
+        
     }
 }
