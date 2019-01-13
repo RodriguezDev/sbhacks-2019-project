@@ -24,6 +24,17 @@ import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final double MIN_OPENGL_VERSION = 3.0;
@@ -36,17 +47,24 @@ public class MainActivity extends AppCompatActivity {
     private Location location1;
     private Location location2;
 
+    private RequestQueue queue;
+    private String url = "https://ar-back-end.herokuapp.com/api/location/dnguyen";
+
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Intent intent = new Intent(this, LocationActivity.class);
-        startActivity(intent);
+        //Intent intent = new Intent(this, LocationActivity.class);
+        //startActivity(intent);
 
         if (!checkIsSupportedDeviceOrFinish(this)) {
             return;
         }
+
+        queue = Volley.newRequestQueue(this);
+
+        getLocationRequest();
 
         setContentView(R.layout.activity_main);
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
@@ -88,13 +106,13 @@ public class MainActivity extends AppCompatActivity {
                     //Find its unit vector
                     //Multiply by distance value
                     //Orient to AR space
-                    float x = (float) (location2.getLongitude() - location1.getLongitude());
-                    float y = (float) (location2.getLatitude() - location1.getLatitude());
-                    Vector3 position = new Vector3(x, y, 0);
-                    position = position.normalized().scaled(3);
+                    //float x = (float) (location2.getLongitude() - location1.getLongitude());
+                    //float y = (float) (location2.getLatitude() - location1.getLatitude());
+                    //Vector3 position = new Vector3(x, y, 0);
+                    //position = position.normalized().scaled(3);
 
-                    //float[] pos = {0, 0, -1};
-                    float[] pos = {position.x, position.y, position.z};
+                    float[] pos = {0, 0, -1};
+                    //float[] pos = {position.x, position.y, position.z};
                     float[] rot = {0, 0, 0, 1};
                     Anchor anchor = session.createAnchor(new Pose(pos, rot));
                     anchorNode = new AnchorNode(anchor);
@@ -147,5 +165,31 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
         return true;
+    }
+
+    private void getLocationRequest() {
+        JsonObjectRequest getRequest = new JsonObjectRequest(Request.Method.GET, url, null,
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        Log.d("Response", response.toString());
+                        try {
+                            double longitude = Double.parseDouble((String) response.get("long"));
+                            double latitude = Double.parseDouble((String) response.get("lat"));
+                            location2.setLongitude(longitude);
+                            location2.setLatitude(latitude);
+                        } catch (JSONException e) {
+                            Log.d("Error", e.getMessage());
+                        }
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError e) {
+                Log.d("Error Response", e.getMessage());
+            }
+        }
+        );
+
+        queue.add(getRequest);
     }
 }
