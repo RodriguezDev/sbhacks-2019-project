@@ -14,13 +14,17 @@ import android.util.Log;
 import android.view.Gravity;
 import android.widget.Toast;
 
+import com.android.volley.toolbox.StringRequest;
+import com.google.android.gms.location.LocationListener;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -35,27 +39,34 @@ import com.android.volley.toolbox.Volley;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
+import java.util.Map;
 
-public class MainActivity extends AppCompatActivity {
+
+public class MainActivity extends AppCompatActivity implements LocationListener {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final double MIN_OPENGL_VERSION = 3.0;
 
     private ArFragment arFragment;
     private ModelRenderable pinRenderable;
 
-    private  AnchorNode anchorNode;
+    private String username;
+
+    private Node node;
 
     private LocationManager locationManager;
     private Location location1;
     private Location location2;
 
     private RequestQueue queue;
-    private String url = "https://ar-back-end.herokuapp.com/api/location/dnguyen";
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        username = getIntent().getStringExtra("username");
+        Log.d("Username", username);
 
         //Intent intent = new Intent(this, LocationActivity.class);
         //startActivity(intent);
@@ -72,10 +83,16 @@ public class MainActivity extends AppCompatActivity {
 
         location1 = Device.getLocation(this, this, locationManager);
 
+        // This method is used to get the location of the current user
+        postLocationRequest(username);
+
+        // This method is used to get the cccc's location
         getLocationRequest();
 
         setContentView(R.layout.activity_main);
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
+        arFragment.getPlaneDiscoveryController().hide();
+        arFragment.getPlaneDiscoveryController().setInstructionView(null);
 
         ModelRenderable.builder()
                 .setSource(this, Uri.parse("pin.sfb"))
@@ -90,12 +107,6 @@ public class MainActivity extends AppCompatActivity {
                             return null;
                         });
 
-        //TransformableNode pin = new TransformableNode(arFragment.getTransformationSystem());
-        //pin.setParent(arFragment.getArSceneView().getScene().getCamera());
-        //pin.setLocalPosition(new Vector3(0, -2, -1));
-        //pin.setRenderable(pinRenderable);
-        //pin.select();
-
         arFragment.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
             @Override
             public void onUpdate(FrameTime frameTime) {
@@ -107,30 +118,16 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                if (anchorNode == null) {
-                    Session session = arFragment.getArSceneView().getSession();
-
-                    //Get difference vector of positions of points
-                    //Find its unit vector
-                    //Multiply by distance value
-                    //Orient to AR space
-                    float x = (float) (location2.getLongitude() - location1.getLongitude());
-                    float y = (float) (location2.getLatitude() - location1.getLatitude());
-                    Vector3 position = new Vector3(x, y, 0);
-                    position = position.normalized().scaled(3);
-
-                    //float[] pos = {0, 0, -1};
-                    float[] pos = {position.x, position.y, position.z};
-                    float[] rot = {0, 0, 0, 1};
-                    Anchor anchor = session.createAnchor(new Pose(pos, rot));
-                    anchorNode = new AnchorNode(anchor);
-                    float scale = (float) 0.25;
-                    anchorNode.setLocalScale(new Vector3(scale, scale, scale));
-                    anchorNode.setRenderable(pinRenderable);
-                    anchorNode.setParent(arFragment.getArSceneView().getScene());
+                if (node == null) {
+                    node = createPin();
+                } else if (isNodeClose(node, 0.75f)) {
+                    arFragment.getArSceneView().getScene().removeChild(node);
+                    node = null;
                 } else {
-                    Vector3 pos = Vector3.add(new Vector3(0, 0, -1), arFragment.getArSceneView().getScene().getCamera().getWorldPosition());
-                    anchorNode.setWorldPosition(arFragment.getArSceneView().getScene().getCamera().getWorldPosition());
+                    //Rotate pin
+                    Quaternion q1 = node.getLocalRotation();
+                    Quaternion q2 = Quaternion.axisAngle(new Vector3(0, 1, 0), 3.5f);
+                    node.setLocalRotation(Quaternion.multiply(q1, q2));
                 }
             }
         });
@@ -154,6 +151,57 @@ public class MainActivity extends AppCompatActivity {
 */
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        String url = "https://ar-back-end.herokuapp.com/api/location/delete/" + username;
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d("Response", response);
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("Error.Response", error.getMessage());
+                    }
+                });
+        queue.add(postRequest);
+    }
+
+    private Node createPin() {
+        Node node;
+        Session session = arFragment.getArSceneView().getSession();
+
+        float x = (float) (location2.getLongitude() - location1.getLongitude());
+        float y = (float) (location2.getLatitude() - location1.getLatitude());
+        Vector3 position = new Vector3(x, y, 0);
+        //position = position.normalized().scaled(10);
+        //position = new Vector3((float) (Math.random() * 3), 0, (float) (Math.random() * 3));
+
+        //float[] pos = {0, 0, -1};
+        //float[] pos = {0, 0, -1};
+        float[] pos = {position.x, position.y, position.z};
+        float[] rot = {0, 0, 0, 1};
+        //Anchor anchor = session.createAnchor(new Pose(pos, rot));
+        node = new Node();
+        float scale = (float) 0.25;
+        node.setLocalScale(new Vector3(scale, scale, scale));
+        node.setRenderable(pinRenderable);
+        node.setParent(arFragment.getArSceneView().getScene());
+        return node;
+    }
+
+    private boolean isNodeClose(Node node, float dist) {
+        Vector3 pos1 = arFragment.getArSceneView().getScene().getCamera().getWorldPosition();
+        Vector3 pos2 = node.getWorldPosition();
+        double diff = Math.pow(pos2.x - pos1.x, 2) + Math.pow(pos2.y - pos1.y, 2) + Math.pow(pos2.z - pos1.z, 2);
+        return Math.pow(dist, 2) > diff;
+    }
+
     public static boolean checkIsSupportedDeviceOrFinish(final Activity activity) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             Log.e(TAG, "Sceneform requires Android N or later");
@@ -175,7 +223,13 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    @Override
+    public void onLocationChanged(Location location) {
+        location1 = location;
+    }
+
     private void getLocationRequest() {
+        String url = "https://ar-back-end.herokuapp.com/api/location/cccc";
         JsonObjectRequest getRequest = new JsonObjectRequest(Request.Method.GET, url, null,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -200,7 +254,33 @@ public class MainActivity extends AppCompatActivity {
         queue.add(getRequest);
     }
 
-    private void postLocationRequest() {
-        
+    private void postLocationRequest(String username) {
+        String url = "https://ar-back-end.herokuapp.com/api/location/";
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d("Response", response);
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("Error.Response", error.getMessage());
+                    }
+                })
+        {
+            @Override
+            protected Map<String, String> getParams()
+            {
+                Map<String, String>  params = new HashMap<String, String>();
+                params.put("username", username);
+                params.put("long", "" + location1.getLongitude());
+                params.put("lat", "" + location1.getLatitude());
+
+                return params;
+            }
+        };
+        queue.add(postRequest);
     }
 }
