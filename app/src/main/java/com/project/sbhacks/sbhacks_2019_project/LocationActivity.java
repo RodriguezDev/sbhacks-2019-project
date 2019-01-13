@@ -13,7 +13,6 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -42,6 +41,7 @@ public class LocationActivity extends AppCompatActivity implements LocationListe
     private TextView latLabel;
     private TextView angleLabel;
     private TextView rawAngleLabel;
+    private TextView distanceLabel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,9 +57,7 @@ public class LocationActivity extends AppCompatActivity implements LocationListe
         latLabel = (TextView) findViewById(R.id.lat_label);
         angleLabel = (TextView) findViewById(R.id.angle_label);
         rawAngleLabel = (TextView) findViewById(R.id.raw_angle_label);
-
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        getLocation();
+        distanceLabel = (TextView) findViewById(R.id.distance_label);
 
         location2 = new Location("");
         location2.setLongitude(-119.845812);
@@ -67,14 +65,16 @@ public class LocationActivity extends AppCompatActivity implements LocationListe
         longText.setText("Longitude: " + location2.getLongitude());
         latText.setText("Latitude: " + location2.getLatitude());
 
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        getLocation();
+
 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
                 getLocation();
-                location2.setLongitude(Double.parseDouble(longText.getText().toString()));
-                location2.setLatitude(Double.parseDouble(latText.getText().toString()));
+                location2.setLongitude(Double.parseDouble(longText.getText().toString().split(" ")[1]));
+                location2.setLatitude(Double.parseDouble(latText.getText().toString().split(" ")[1]));
             }
         });
 
@@ -116,6 +116,7 @@ public class LocationActivity extends AppCompatActivity implements LocationListe
 
         longLabel.setText("Longitude: " + location.getLongitude());
         latLabel.setText("Latitude: " + location.getLatitude());
+        distanceLabel.setText("Distance: " + getDistance(location, location2));
     }
 
     float getAngle() {
@@ -131,6 +132,23 @@ public class LocationActivity extends AppCompatActivity implements LocationListe
         angleLabel.setText("Angle: " + angle);
 
         return (float) angle;
+    }
+
+    private float getDistance(Location l1, Location l2) {
+        double R = 6373.0;
+        double lat1 = Math.toRadians(l1.getLatitude());
+        double long1 = Math.toRadians(l1.getLongitude());
+        double lat2 = Math.toRadians(l2.getLatitude());
+        double long2 = Math.toRadians(l2.getLongitude());
+
+        double dLong = long2 - long1;
+        double dLat = lat2 - lat1;
+
+        double a = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dLong / 2), 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        double dist = R * c;
+        return (float) dist;
     }
 
     void updateBackground() {

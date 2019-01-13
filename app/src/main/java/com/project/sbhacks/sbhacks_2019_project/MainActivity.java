@@ -5,33 +5,24 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
-import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.widget.Toast;
 
-import com.google.android.gms.location.LocationRequest;
 import com.google.ar.core.Anchor;
-import com.google.ar.core.HitResult;
-import com.google.ar.core.Plane;
+import com.google.ar.core.Pose;
+import com.google.ar.core.Session;
+import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
-import com.google.ar.sceneform.ArSceneView;
-import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
-import com.google.ar.sceneform.ux.TransformableNode;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
-import uk.co.appoly.arcorelocation.LocationMarker;
-import uk.co.appoly.arcorelocation.LocationScene;
-import uk.co.appoly.arcorelocation.utils.ARLocationPermissionHelper;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -40,19 +31,18 @@ public class MainActivity extends AppCompatActivity {
     private ArFragment arFragment;
     private ModelRenderable pinRenderable;
 
-    private LocationScene locationScene;
+    private  AnchorNode anchorNode;
+
+    private Location location1;
+    private Location location2;
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-
-
         Intent intent = new Intent(this, LocationActivity.class);
         startActivity(intent);
-
-
 
         if (!checkIsSupportedDeviceOrFinish(this)) {
             return;
@@ -74,6 +64,52 @@ public class MainActivity extends AppCompatActivity {
                             return null;
                         });
 
+        //TransformableNode pin = new TransformableNode(arFragment.getTransformationSystem());
+        //pin.setParent(arFragment.getArSceneView().getScene().getCamera());
+        //pin.setLocalPosition(new Vector3(0, -2, -1));
+        //pin.setRenderable(pinRenderable);
+        //pin.select();
+
+        arFragment.getArSceneView().getScene().addOnUpdateListener(new Scene.OnUpdateListener() {
+            @Override
+            public void onUpdate(FrameTime frameTime) {
+                if (arFragment.getArSceneView().getArFrame() == null) {
+                    return;
+                }
+
+                if (arFragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
+                    return;
+                }
+
+                if (anchorNode == null) {
+                    Session session = arFragment.getArSceneView().getSession();
+
+                    //Get difference vector of positions of points
+                    //Find its unit vector
+                    //Multiply by distance value
+                    //Orient to AR space
+                    float x = (float) (location2.getLongitude() - location1.getLongitude());
+                    float y = (float) (location2.getLatitude() - location1.getLatitude());
+                    Vector3 position = new Vector3(x, y, 0);
+                    position = position.normalized().scaled(3);
+
+                    //float[] pos = {0, 0, -1};
+                    float[] pos = {position.x, position.y, position.z};
+                    float[] rot = {0, 0, 0, 1};
+                    Anchor anchor = session.createAnchor(new Pose(pos, rot));
+                    anchorNode = new AnchorNode(anchor);
+                    float scale = (float) 0.25;
+                    anchorNode.setLocalScale(new Vector3(scale, scale, scale));
+                    anchorNode.setRenderable(pinRenderable);
+                    anchorNode.setParent(arFragment.getArSceneView().getScene());
+                } else {
+                    Vector3 pos = Vector3.add(new Vector3(0, 0, -1), arFragment.getArSceneView().getScene().getCamera().getWorldPosition());
+                    anchorNode.setWorldPosition(arFragment.getArSceneView().getScene().getCamera().getWorldPosition());
+                }
+            }
+        });
+
+/*
         arFragment.setOnTapArPlaneListener(
                 (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
                     if (pinRenderable == null) {
@@ -89,29 +125,7 @@ public class MainActivity extends AppCompatActivity {
                     pin.setRenderable(pinRenderable);
                     pin.select();
                 });
-
-        if (!ARLocationPermissionHelper.hasPermission(this)) {
-            ARLocationPermissionHelper.requestPermission(this);
-        }
-
-        arFragment
-                .getArSceneView()
-                .getScene()
-                .addOnUpdateListener(frameTime -> {
-                    Log.d(TAG, "Hello");
-                    if (locationScene == null) {
-                        locationScene = new LocationScene(this, this, arFragment.getArSceneView());
-                        locationScene.mLocationMarkers.add(
-                                new LocationMarker(
-                                        -119.844045,
-                                        34.412954,
-                                        getPin()));
-                    }
-
-                    if (locationScene != null) {
-                        locationScene.processFrame(arFragment.getArSceneView().getArFrame());
-                    }
-                });
+*/
     }
 
     public static boolean checkIsSupportedDeviceOrFinish(final Activity activity) {
@@ -133,17 +147,5 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
         return true;
-    }
-
-    private Node getPin() {
-        Node base = new Node();
-        base.setRenderable(pinRenderable);
-        Context c = this;
-        base.setOnTapListener((v, event) -> {
-            Toast.makeText(
-                    c, "Pin touched.", Toast.LENGTH_LONG)
-                    .show();
-        });
-        return base;
     }
 }

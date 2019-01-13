@@ -60,6 +60,15 @@
         android:text="raw angle: 0" />
 
     <TextView
+        android:id="@+id/distance_label"
+        android:layout_width="221dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="76dp"
+        android:text="distance: " />
+
+    <TextView
         android:id="@+id/lat_label"
         android:layout_width="221dp"
         android:layout_height="wrap_content"
