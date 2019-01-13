@@ -4,6 +4,10 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
@@ -11,16 +15,15 @@ import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.Gravity;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.toolbox.StringRequest;
 import com.google.android.gms.location.LocationListener;
-import com.google.ar.core.Anchor;
-import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.core.TrackingState;
-import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
@@ -58,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     private Location location1;
     private Location location2;
 
+    private float orientation;
+
     private RequestQueue queue;
 
     @Override
@@ -88,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
         // This method is used to get the cccc's location
         getLocationRequest();
+
 
         setContentView(R.layout.activity_main);
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
@@ -129,6 +135,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                     Quaternion q2 = Quaternion.axisAngle(new Vector3(0, 1, 0), 3.5f);
                     node.setLocalRotation(Quaternion.multiply(q1, q2));
                 }
+
             }
         });
 
@@ -178,20 +185,18 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
         float x = (float) (location2.getLongitude() - location1.getLongitude());
         float y = (float) (location2.getLatitude() - location1.getLatitude());
-        Vector3 position = new Vector3(x, y, 0);
-        //position = position.normalized().scaled(10);
-        //position = new Vector3((float) (Math.random() * 3), 0, (float) (Math.random() * 3));
+        Vector3 position = new Vector3(x, 0, y);
+        //position = position.normalized().scaled(4);
 
-        //float[] pos = {0, 0, -1};
-        //float[] pos = {0, 0, -1};
-        float[] pos = {position.x, position.y, position.z};
-        float[] rot = {0, 0, 0, 1};
-        //Anchor anchor = session.createAnchor(new Pose(pos, rot));
+        //Vector3 position = new Vector3(0, 0, -4);
+        position = new Vector3((float) (Math.random() * 4), 0, (float) (Math.random() * 4));
+
         node = new Node();
         float scale = (float) 0.25;
         node.setLocalScale(new Vector3(scale, scale, scale));
         node.setRenderable(pinRenderable);
         node.setParent(arFragment.getArSceneView().getScene());
+        node.setLocalPosition(position);
         return node;
     }
 
