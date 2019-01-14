@@ -1,5 +1,5 @@
 # sbhacks-2019-project
 <h1>AR 3D Map</h1>
 <p>
-  This is the project of our team for the UCSB Hack of 2019. In this project, we build the AR system based on Android Studio, AR Core, MongDB, Javascript, React Native, and Swift.
+  This was the team project built during UCSB Hacks of 2019. In this project, we built an AR Android application that maps users to each other based off geographic and sensor data. Built with Android Studio, Java, the AR Core library, MongDB configured with Javascript, and React Native.
 </p>
